@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERP 3T Promo – Gift Cards</title>
+  <link rel="icon" href="3T Promo.png" />
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --txt: #ffffff;
+      --muted: #cfcfcf;
+      --card: #121212;
+      --card-2: #171717;
+      --prim: #e10600; /* vermelho */
+      --sec: #ffd000; /* amarelo */
+      --accent: #ffffff; /* branco */
+      --shadow: 0 8px 24px rgba(0,0,0,.25);
+      --border: 1px solid rgba(255,255,255,.08);
+    }
+    [data-theme="light"]{
+      --bg: #fafafa;
+      --txt: #111111;
+      --muted: #444;
+      --card: #ffffff;
+      --card-2: #f6f6f6;
+      --prim: #e10600;
+      --sec: #f5c400;
+      --accent: #000000;
+      --shadow: 0 8px 24px rgba(0,0,0,.08);
+      --border: 1px solid rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg); color: var(--txt);
+    }
+    header{
+      position: sticky; top:0; z-index:50; background: var(--card);
+      border-bottom: var(--border);
+      box-shadow: var(--shadow);
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .topbar{display:flex; align-items:center; gap:16px}
+    .logo{display:flex; align-items:center; gap:10px}
+    .logo img{width:40px;height:40px;object-fit:contain;border-radius:8px;border:var(--border);background:#fff}
+    .brand{font-weight:700; letter-spacing:.3px}
+    nav{display:flex; gap:10px; flex-wrap:wrap}
+    nav a{padding:10px 12px; border-radius:12px; text-decoration:none; color:var(--txt); border:var(--border); background:var(--card-2)}
+    nav a.active{outline:2px solid var(--sec);}
+    .spacer{flex:1}
+    .search{display:flex; gap:8px; align-items:center}
+    .search input{padding:10px 12px;border-radius:12px;border:var(--border); background:var(--card-2); color:var(--txt); min-width:260px}
+    .btn{padding:10px 14px; border-radius:12px; border:none; cursor:pointer; font-weight:600}
+    .btn-prim{background:var(--prim); color:#fff}
+    .btn-sec{background:var(--sec); color:#000}
+    .btn-ghost{background:transparent; border:var(--border); color:var(--txt)}
+    .btn-mini{padding:6px 10px; font-size:.9rem; border-radius:10px}
+    .grid{display:grid; gap:14px}
+    .grid.cards{grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))}
+    .card{background:var(--card); border:var(--border); border-radius:16px; padding:14px; box-shadow: var(--shadow)}
+    .card h3{margin:0 0 8px}
+    .card p{margin:4px 0; color:var(--muted)}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    input, select{padding:10px 12px; border-radius:12px; border:var(--border); background:var(--card-2); color:var(--txt)}
+    label{font-weight:600; font-size:.95rem}
+    .section{display:none}
+    .section.active{display:block}
+    footer{margin-top:40px; background:var(--card); border-top:var(--border);}
+    footer .wrap{display:flex; justify-content:space-between; align-items:center}
+    .tag{display:inline-block; padding:4px 8px; border-radius:999px; background:var(--sec); color:#000; font-weight:700; font-size:.8rem}
+    .muted{color:var(--muted)}
+    hr{border:none; border-top: var(--border); margin:12px 0}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:var(--border); background:var(--card-2)}
+    .hidden{display:none}
+    .flex{display:flex;gap:10px}
+    .right{margin-left:auto}
+    .danger{background:#9b111e!important; color:#fff}
+    .ok{background:#1d9c36!important; color:#fff}
+    .warn{background:#b8860b!important; color:#000}
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.5)}
+    .modal.open{display:flex}
+    .modal .sheet{width:min(920px, 96vw); max-height:90vh; overflow:auto; background:var(--card); border:var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow)}
+    .table{width:100%; border-collapse: collapse}
+    .table th,.table td{border-bottom: var(--border); padding:8px; text-align:left}
+    .right-align{text-align:right}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:.9rem; background:var(--card-2); border:var(--border); padding:2px 6px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap topbar">
+      <div class="logo">
+        <!-- Coloque um arquivo de imagem com o nome exatamente: 3T Promo.png -->
+        <img src="3T Promo.png" alt="3T Promo" onerror="this.style.visibility='hidden'"/>
+        <div class="brand">3T Promo • ERP Marketplace de Gift Cards</div>
+      </div>
+      <nav id="mainNav" class="spacer">
+        <a data-section="auth" class="active">Login</a>
+        <a data-section="paises">Países</a>
+        <a data-section="clientes">Clientes</a>
+        <a data-section="pedidos">Pedidos</a>
+        <a data-section="pendentes">Pendentes</a>
+        <a data-section="historico">Histórico</a>
+        <a data-section="config">Config</a>
+      </nav>
+      <div class="search">
+        <input id="searchInput" placeholder="Pesquisar: país, cliente, #pedido..."/>
+        <button class="btn btn-sec" id="searchBtn">Pesquisar</button>
+        <button class="btn btn-ghost" id="themeBtn" title="Alternar tema">Tema</button>
+        <button class="btn btn-ghost hidden" id="logoutBtn" title="Sair">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- AUTH -->
+    <section id="sec-auth" class="section active">
+      <div class="grid cards">
+        <div class="card">
+          <h3>Administrador • Entrar</h3>
+          <p class="muted">Acesso restrito. Senha numérica.</p>
+          <div class="grid" style="grid-template-columns:1fr;">
+            <label>Usuário<input id="loginUser" placeholder="admin"/></label>
+            <label>Senha (números)<input id="loginPass" inputmode="numeric" pattern="[0-9]*" placeholder="••••"/></label>
+            <button class="btn btn-prim" id="loginBtn">Entrar</button>
+          </div>
+          <hr>
+          <p class="muted">Se ainda não possui cadastro, crie abaixo.</p>
+          <div class="grid" style="grid-template-columns:1fr;">
+            <label>Novo usuário<input id="regUser" placeholder="novo_admin"/></label>
+            <label>Nova senha (somente números)<input id="regPass" inputmode="numeric" pattern="[0-9]*" placeholder="ex: 123456"/></label>
+            <button class="btn btn-sec" id="registerBtn">Cadastrar administrador</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Dica rápida</h3>
+          <p>Atalhos: <span class="kbd">/</span> foca a busca • <span class="kbd">g</span> abre Países • <span class="kbd">c</span> abre Clientes • <span class="kbd">p</span> abre Pedidos.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAISES -->
+    <section id="sec-paises" class="section">
+      <div class="row" style="align-items:flex-end">
+        <div class="card" style="flex:1; min-width:280px">
+          <h3>Cadastrar país</h3>
+          <div class="grid" style="grid-template-columns:1fr auto; align-items:end">
+            <label>Nome do país<input id="paisNome" placeholder="Ex.: Brasil"/></label>
+            <button class="btn btn-prim" id="addPaisBtn">Adicionar</button>
+          </div>
+        </div>
+        <div class="pill">Total de países: <span id="paisCount">0</span></div>
+      </div>
+      <div id="paisLista" class="grid cards" style="margin-top:16px"></div>
+    </section>
+
+    <!-- CLIENTES -->
+    <section id="sec-clientes" class="section">
+      <div class="row" style="align-items:flex-end">
+        <div class="card" style="flex:1; min-width:320px">
+          <h3>Cadastrar cliente</h3>
+          <div class="grid" style="grid-template-columns:repeat(3, 1fr); align-items:end">
+            <label>Nome<input id="cliNome" placeholder="Ex.: Maria Silva"/></label>
+            <label>Documento / ID<input id="cliDoc" placeholder="Opcional"/></label>
+            <button class="btn btn-prim" id="addClienteBtn">Adicionar</button>
+          </div>
+        </div>
+        <div class="pill">Total de clientes: <span id="cliCount">0</span></div>
+      </div>
+      <div id="cliLista" class="grid cards" style="margin-top:16px"></div>
+    </section>
+
+    <!-- PEDIDOS (criar) -->
+    <section id="sec-pedidos" class="section">
+      <div class="card">
+        <h3>Novo pedido</h3>
+        <div class="grid" style="grid-template-columns:repeat(4, 1fr); align-items:end">
+          <label>Cliente<select id="pedidoCliente"></select></label>
+          <label>País<select id="pedidoPais"></select></label>
+          <div class="right"></div>
+          <button class="btn btn-sec" id="limparCarrinhoBtn">Limpar seleção</button>
+        </div>
+        <hr>
+        <div id="produtosArea" class="grid cards"></div>
+        <hr>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <div>
+            <div class="muted">Selecione quantidades para adicionar ao carrinho.</div>
+          </div>
+          <div class="row" style="align-items:center">
+            <div class="pill">Itens: <span id="cartItems">0</span></div>
+            <div class="pill">Total: <span id="cartTotal">R$ 0,00</span></div>
+            <button class="btn btn-prim" id="finalizarPedidoBtn">Finalizar pedido</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PENDENTES -->
+    <section id="sec-pendentes" class="section">
+      <div class="row" style="align-items:center">
+        <h3 style="margin:0">Pedidos pendentes (aguardando pagamento)</h3>
+        <div class="pill">Total: <span id="pendCount">0</span></div>
+      </div>
+      <div id="pendLista" class="grid cards" style="margin-top:16px"></div>
+    </section>
+
+    <!-- HISTÓRICO -->
+    <section id="sec-historico" class="section">
+      <div class="row" style="align-items:center">
+        <h3 style="margin:0">Histórico por cliente</h3>
+        <div class="muted">Pedidos já pagos e finalizados</div>
+      </div>
+      <div id="histClientes" class="grid" style="grid-template-columns:1fr; gap:16px; margin-top:16px"></div>
+    </section>
+
+    <!-- CONFIG -->
+    <section id="sec-config" class="section">
+      <div class="grid cards">
+        <div class="card">
+          <h3>Tema</h3>
+          <button class="btn btn-ghost" id="themeBtn2">Alternar tema (claro/escuro)</button>
+        </div>
+        <div class="card">
+          <h3>Backup local</h3>
+          <div class="row">
+            <button class="btn btn-sec" id="exportBtn">Exportar JSON</button>
+            <input type="file" id="importFile" accept="application/json"/>
+            <button class="btn btn-prim" id="importBtn">Importar</button>
+          </div>
+          <p class="muted">Todos os dados são salvos localmente no seu navegador (localStorage).</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <strong>3T Promo</strong> — Plataforma ERP para marketplace de gift cards.
+      </div>
+      <div class="muted">Rodape <span id="themeLabel">escuro</span>.</div>
+    </div>
+  </footer>
+
+  <!-- MODAL: Produtos por país -->
+  <div id="modalProdutos" class="modal" aria-hidden="true">
+    <div class="sheet">
+      <div class="row" style="align-items:center">
+        <h3 style="margin:0">Produtos — <span id="modalPaisNome"></span></h3>
+        <button class="btn btn-ghost right" onclick="closeProdutosModal()">Fechar</button>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <h4>Cadastrar produto</h4>
+        <div class="grid" style="grid-template-columns:repeat(4, 1fr); align-items:end">
+          <label>Nome<input id="prodNome" placeholder="Ex.: Gift Card X"/></label>
+          <label>Preço (R$)<input id="prodPreco" type="number" min="0" step="0.01" placeholder="0,00"/></label>
+          <label>Desconto (%)<input id="prodDesc" type="number" min="0" max="100" step="1" placeholder="0"/></label>
+          <button class="btn btn-sec" id="addProdutoBtn">Adicionar</button>
+        </div>
+      </div>
+      <div id="prodLista" class="grid cards" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Busca -->
+  <div id="modalBusca" class="modal" aria-hidden="true">
+    <div class="sheet">
+      <div class="row" style="align-items:center">
+        <h3 style="margin:0">Resultados da pesquisa</h3>
+        <button class="btn btn-ghost right" onclick="toggleBuscaModal(false)">Fechar</button>
+      </div>
+      <div id="buscaResultados" class="grid" style="grid-template-columns:1fr; gap:12px; margin-top:8px"></div>
+    </div>
+  </div>
+
+  <script>
+    // === Utilidades ===
+    const $ = (sel, parent=document) => parent.querySelector(sel);
+    const $$ = (sel, parent=document) => [...parent.querySelectorAll(sel)];
+    const money = n => n.toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+
+    function uid(){ return Math.random().toString(36).slice(2,9); }
+
+    // === Persistência ===
+    const store = {
+      get(){
+        const raw = localStorage.getItem('erp3t');
+        if(raw){ try { return JSON.parse(raw); } catch{ /* ignore */ } }
+        return { admin:null, theme:'dark', lastOrderId:0, paises:[], clientes:[], produtos:{}, pedidos:[] };
+      },
+      set(data){ localStorage.setItem('erp3t', JSON.stringify(data)); },
+      patch(mut){ const data = store.get(); mut(data); store.set(data); renderAll(); }
+    };
+
+    // === Estado ===
+    let state = store.get();
+
+    function renderAll(){
+      state = store.get();
+      renderAuth();
+      renderPaises();
+      renderClientes();
+      fillSelects();
+      renderProdutosModal(); // if open
+      renderPendentes();
+      renderHistorico();
+      updateThemeLabel();
+    }
+
+    // === Tema ===
+    function applyTheme(){
+      document.documentElement.setAttribute('data-theme', state.theme === 'light' ? 'light' : 'dark');
+    }
+    function toggleTheme(){ store.patch(d=>{ d.theme = d.theme==='light'?'dark':'light'; }); applyTheme(); }
+
+    // === Navegação ===
+    const sections = ['auth','paises','clientes','pedidos','pendentes','historico','config'];
+    function showSection(key){
+      sections.forEach(s=>{
+        const link = $(`nav a[data-section="${s}"]`);
+        const sec = $(`#sec-${s}`);
+        if(link){ link.classList.toggle('active', s===key); }
+        if(sec){ sec.classList.toggle('active', s===key); }
+      });
+      if(key!=='auth') $('#logoutBtn').classList.remove('hidden');
+    }
+
+    // === Auth ===
+    function renderAuth(){
+      const logged = !!(state.admin && state.admin.logged);
+      if(logged){
+        showSection('paises');
+        $('#logoutBtn').classList.remove('hidden');
+        $$('nav a').forEach(a=> a.classList.remove('disabled'));
+      } else {
+        showSection('auth');
+        $('#logoutBtn').classList.add('hidden');
+      }
+    }
+
+    function register(){
+      const user = $('#regUser').value.trim();
+      const pass = $('#regPass').value.trim();
+      if(!user || !pass) return alert('Informe usuário e senha numérica.');
+      if(!/^\d+$/.test(pass)) return alert('A senha deve conter apenas números.');
+      store.patch(d=>{ d.admin = { user, pass, logged:false }; });
+      alert('Administrador cadastrado! Faça login.');
+    }
+
+    function login(){
+      const user = $('#loginUser').value.trim();
+      const pass = $('#loginPass').value.trim();
+      if(!state.admin) return alert('Cadastre um administrador primeiro.');
+      if(state.admin.user===user && state.admin.pass===pass){
+        store.patch(d=>{ d.admin.logged = true; });
+        showSection('paises');
+      } else {
+        alert('Credenciais inválidas.');
+      }
+    }
+
+    function logout(){ store.patch(d=>{ if(d.admin) d.admin.logged=false; }); showSection('auth'); }
+
+    // === Países ===
+    function addPais(){
+      const nome = $('#paisNome').value.trim();
+      if(!nome) return alert('Informe o nome do país.');
+      const exists = state.paises.some(p=> p.nome.toLowerCase()===nome.toLowerCase());
+      if(exists) return alert('País já cadastrado.');
+      store.patch(d=>{ d.paises.push({ id:uid(), nome }); });
+      $('#paisNome').value='';
+    }
+
+    function removePais(id){
+      if(!confirm('Remover país e seus produtos?')) return;
+      store.patch(d=>{
+        d.paises = d.paises.filter(p=>p.id!==id);
+        delete d.produtos[id];
+        // Pedidos desse país permanecem com snapshot de itens; país pode ficar "(Removido)" no render.
+      });
+    }
+
+    let currentPaisId = null; // para modal
+
+    function openProdutosModal(paisId){
+      currentPaisId = paisId;
+      const pais = state.paises.find(p=>p.id===paisId);
+      $('#modalPaisNome').textContent = pais? pais.nome : '(País removido)';
+      $('#modalProdutos').classList.add('open');
+      renderProdutosModal();
+    }
+    function closeProdutosModal(){ $('#modalProdutos').classList.remove('open'); currentPaisId=null; }
+
+    function addProduto(){
+      const nome = $('#prodNome').value.trim();
+      const preco = parseFloat($('#prodPreco').value.replace(',','.'))||0;
+      const desc = parseFloat($('#prodDesc').value)||0;
+      if(!currentPaisId) return;
+      if(!nome) return alert('Informe o nome do produto.');
+      if(preco<=0) return alert('Informe um preço válido.');
+      if(desc<0 || desc>100) return alert('Desconto deve ser entre 0% e 100%.');
+      store.patch(d=>{
+        if(!d.produtos[currentPaisId]) d.produtos[currentPaisId] = [];
+        d.produtos[currentPaisId].push({ id:uid(), nome, preco, desc });
+      });
+      $('#prodNome').value=''; $('#prodPreco').value=''; $('#prodDesc').value='';
+    }
+
+    function editProduto(paisId, prodId){
+      const list = state.produtos[paisId]||[];
+      const p = list.find(x=>x.id===prodId);
+      if(!p) return;
+      const nome = prompt('Nome do produto:', p.nome);
+      if(nome===null) return;
+      const preco = parseFloat(prompt('Preço (R$):', p.preco))||0;
+      const desc = parseFloat(prompt('Desconto (%):', p.desc))||0;
+      if(preco<=0 || desc<0 || desc>100) return alert('Valores inválidos.');
+      store.patch(d=>{
+        const arr = d.produtos[paisId]||[];
+        const i = arr.findIndex(z=>z.id===prodId);
+        if(i>-1) arr[i] = { ...arr[i], nome, preco, desc };
+      });
+    }
+
+    function delProduto(paisId, prodId){
+      if(!confirm('Excluir este produto?')) return;
+      store.patch(d=>{
+        d.produtos[paisId] = (d.produtos[paisId]||[]).filter(x=>x.id!==prodId);
+      });
+    }
+
+    function renderPaises(){
+      $('#paisCount').textContent = state.paises.length;
+      const wrap = $('#paisLista');
+      wrap.innerHTML='';
+      state.paises.forEach(p=>{
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `
+          <div class="row" style="align-items:center">
+            <h3 style="margin:0">${p.nome}</h3>
+            <span class="tag">${(state.produtos[p.id]||[]).length} produtos</span>
+            <button class="btn btn-mini btn-sec right" onclick="openProdutosModal('${p.id}')">Gerenciar produtos</button>
+            <button class="btn btn-mini danger" onclick="removePais('${p.id}')">Excluir país</button>
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    function renderProdutosModal(){
+      if(!currentPaisId) return;
+      const list = state.produtos[currentPaisId]||[];
+      const box = $('#prodLista');
+      box.innerHTML = list.map(p=>{
+        const precoDesc = p.preco * (1 - p.desc/100);
+        return `
+          <div class="card">
+            <div class="row" style="align-items:center">
+              <h4 style="margin:0">${p.nome}</h4>
+              <span class="pill">Preço: ${money(p.preco)}</span>
+              <span class="pill warn">Desc: ${p.desc}%</span>
+              <span class="pill ok">Com desc: ${money(precoDesc)}</span>
+              <button class="btn btn-mini btn-ghost right" onclick="editProduto('${currentPaisId}','${p.id}')">Editar</button>
+              <button class="btn btn-mini danger" onclick="delProduto('${currentPaisId}','${p.id}')">Excluir</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // === Clientes ===
+    function addCliente(){
+      const nome = $('#cliNome').value.trim();
+      const doc = $('#cliDoc').value.trim();
+      if(!nome) return alert('Informe o nome do cliente.');
+      store.patch(d=>{ d.clientes.push({ id:uid(), nome, doc }); });
+      $('#cliNome').value=''; $('#cliDoc').value='';
+    }
+
+    function removeCliente(id){
+      if(!confirm('Remover cliente? Os pedidos existentes não serão apagados.')) return;
+      store.patch(d=>{ d.clientes = d.clientes.filter(c=>c.id!==id); });
+    }
+
+    function renderClientes(){
+      $('#cliCount').textContent = state.clientes.length;
+      const wrap = $('#cliLista');
+      wrap.innerHTML='';
+      state.clientes.forEach(c=>{
+        const card = document.createElement('div'); card.className='card';
+        const totalCliente = state.pedidos.filter(p=>p.status==='paid' && p.clienteId===c.id).length;
+        card.innerHTML = `
+          <div class="row" style="align-items:center">
+            <div>
+              <h3 style="margin:0">${c.nome}</h3>
+              <p class="muted">ID: ${c.doc||'-'}</p>
+            </div>
+            <span class="tag">${totalCliente} pedidos finalizados</span>
+            <button class="btn btn-mini btn-ghost right" onclick="gotoHistoricoCliente('${c.id}')">Ver histórico</button>
+            <button class="btn btn-mini danger" onclick="removeCliente('${c.id}')">Excluir</button>
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    // === Selects para pedidos ===
+    function fillSelects(){
+      const selCli = $('#pedidoCliente');
+      const selPais = $('#pedidoPais');
+      if(!selCli || !selPais) return;
+      selCli.innerHTML = '<option value="">Selecione...</option>' + state.clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+      selPais.innerHTML = '<option value="">Selecione...</option>' + state.paises.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+    }
+
+    // === Criar pedido ===
+    let cart = { items:[], total:0 };
+    function resetCart(){ cart = { items:[], total:0 }; updateCartUI(); }
+
+    function updateCartUI(){
+      $('#cartItems').textContent = cart.items.reduce((a,b)=>a+b.qty,0);
+      $('#cartTotal').textContent = money(cart.total);
+    }
+
+    function renderProdutosPedido(){
+      const paisId = $('#pedidoPais').value;
+      const list = state.produtos[paisId]||[];
+      const area = $('#produtosArea');
+      if(!paisId){ area.innerHTML='<div class="muted">Selecione um país para listar os produtos.</div>'; return; }
+      if(list.length===0){ area.innerHTML='<div class="muted">Nenhum produto neste país. Cadastre em <strong>Países → Gerenciar produtos</strong>.</div>'; return; }
+      area.innerHTML = list.map(p=>{
+        const precoDesc = p.preco*(1-p.desc/100);
+        return `
+          <div class="card">
+            <div class="row" style="align-items:center">
+              <div>
+                <h4 style="margin:0">${p.nome}</h4>
+                <p class="muted">Preço: ${money(p.preco)} • Desconto: ${p.desc}% • <strong>Final: ${money(precoDesc)}</strong></p>
+              </div>
+              <input type="number" min="0" step="1" value="0" style="width:100px" id="qty-${p.id}"/>
+              <button class="btn btn-mini btn-sec" onclick="addToCart('${p.id}','${paisId}')">Adicionar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addToCart(prodId, paisId){
+      const list = state.produtos[paisId]||[];
+      const p = list.find(x=>x.id===prodId);
+      const qtyInput = $(`#qty-${prodId}`);
+      const qty = parseInt(qtyInput.value)||0;
+      if(qty<=0) return alert('Quantidade deve ser maior que zero.');
+      const unit = p.preco*(1-p.desc/100);
+      const item = cart.items.find(i=>i.prodId===prodId);
+      if(item){ item.qty += qty; item.total = item.qty*unit; }
+      else cart.items.push({ prodId, nome:p.nome, preco:p.preco, desc:p.desc, unit, qty, total: unit*qty });
+      cart.total = cart.items.reduce((a,b)=>a+b.total,0);
+      updateCartUI();
+      qtyInput.value = 0;
+    }
+
+    function finalizarPedido(){
+      const clienteId = $('#pedidoCliente').value;
+      const paisId = $('#pedidoPais').value;
+      if(!clienteId) return alert('Selecione o cliente.');
+      if(!paisId) return alert('Selecione o país.');
+      if(cart.items.length===0) return alert('Adicione itens.');
+      store.patch(d=>{
+        d.lastOrderId = (d.lastOrderId||0) + 1;
+        const pedido = {
+          id: d.lastOrderId,
+          clienteId,
+          paisId,
+          itens: cart.items.map(i=>({ prodId:i.prodId, nome:i.nome, preco:i.preco, desc:i.desc, unit:i.unit, qty:i.qty, total:i.total })),
+          total: cart.total,
+          status: 'pending',
+          createdAt: Date.now()
+        };
+        d.pedidos.push(pedido);
+      });
+      resetCart();
+      $('#pedidoCliente').value=''; $('#pedidoPais').value='';
+      renderProdutosPedido();
+      showSection('pendentes');
+    }
+
+    // === Pendentes ===
+    function renderPendentes(){
+      const list = state.pedidos.filter(p=>p.status==='pending').sort((a,b)=>a.id-b.id);
+      $('#pendCount').textContent = list.length;
+      const wrap = $('#pendLista'); wrap.innerHTML='';
+      list.forEach(p=>{
+        const cliente = state.clientes.find(c=>c.id===p.clienteId);
+        const pais = state.paises.find(x=>x.id===p.paisId);
+        const card = document.createElement('div'); card.className='card';
+        const rows = p.itens.map(i=>`<tr><td>${i.nome}</td><td class="right-align">${i.qty}</td><td class="right-align">${money(i.unit)}</td><td class="right-align">${money(i.total)}</td></tr>`).join('');
+        card.innerHTML = `
+          <div class="row" style="align-items:center">
+            <h3 style="margin:0">Pedido #${p.id}</h3>
+            <span class="pill">Cliente: ${cliente?cliente.nome:'(Removido)'}</span>
+            <span class="pill">País: ${pais?pais.nome:'(Removido)'}</span>
+            <span class="pill ok right">Total: ${money(p.total)}</span>
+          </div>
+          <table class="table" style="margin-top:8px">
+            <thead><tr><th>Produto</th><th class="right-align">Qtd</th><th class="right-align">Unitário</th><th class="right-align">Subtotal</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn btn-mini btn-ghost" onclick="editarPedido(${p.id})">Editar</button>
+            <button class="btn btn-mini ok" onclick="marcarPago(${p.id})">Marcar como pago</button>
+            <button class="btn btn-mini danger" onclick="cancelarPedido(${p.id})">Cancelar</button>
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    function editarPedido(id){
+      const p = state.pedidos.find(x=>x.id===id && x.status==='pending');
+      if(!p) return;
+      // Edição simples: ajustar quantidades
+      const novo = JSON.parse(JSON.stringify(p));
+      let msg = 'Edite as quantidades (produto: qtd) — deixe vazio para manter:\n';
+      novo.itens.forEach(i=>{ msg += `- ${i.nome}: ${i.qty}\n`; });
+      const entrada = prompt(msg, novo.itens.map(i=>`${i.nome}:${i.qty}`).join(','));
+      if(entrada===null) return;
+      try{
+        const updates = entrada.split(',').map(x=>x.trim()).filter(Boolean);
+        updates.forEach(pair=>{
+          const [nome, qtdStr] = pair.split(':');
+          const item = novo.itens.find(i=>i.nome===nome.trim());
+          if(item){ const q = parseInt(qtdStr); if(!isNaN(q) && q>=0){ item.qty=q; item.total=item.unit*q; } }
+        });
+        novo.itens = novo.itens.filter(i=>i.qty>0);
+        novo.total = novo.itens.reduce((a,b)=>a+b.total,0);
+        store.patch(d=>{
+          const i = d.pedidos.findIndex(x=>x.id===id);
+          if(i>-1){ d.pedidos[i] = { ...d.pedidos[i], itens:novo.itens, total:novo.total } }
+        });
+      }catch(e){ alert('Formato inválido. Use Ex.: Produto A:2, Produto B:1'); }
+    }
+
+    function cancelarPedido(id){
+      if(!confirm('Cancelar este pedido pendente?')) return;
+      store.patch(d=>{ d.pedidos = d.pedidos.filter(p=>p.id!==id); });
+    }
+
+    function marcarPago(id){
+      store.patch(d=>{
+        const p = d.pedidos.find(x=>x.id===id);
+        if(p) p.status='paid';
+      });
+      showSection('historico');
+    }
+
+    // === Histórico por cliente ===
+    function renderHistorico(){
+      const cont = $('#histClientes');
+      cont.innerHTML='';
+      // Cada cliente vira uma seção com pedidos pagos ordenados
+      const clientesOrdenados = [...state.clientes].sort((a,b)=>a.nome.localeCompare(b.nome));
+      clientesOrdenados.forEach(c=>{
+        const pedidos = state.pedidos.filter(p=>p.status==='paid' && p.clienteId===c.id).sort((a,b)=>a.id-b.id);
+        const box = document.createElement('div'); box.className='card';
+        box.innerHTML = `
+          <div class="row" style="align-items:center">
+            <h3 style="margin:0">${c.nome}</h3>
+            <span class="pill">${pedidos.length} pedidos</span>
+            <button class="btn btn-mini btn-ghost right" onclick="toggleClienteHist(this)">Expandir/Recolher</button>
+          </div>
+          <div class="hist-entries" style="margin-top:8px"></div>
+        `;
+        const entries = $('.hist-entries', box);
+        if(pedidos.length===0){
+          entries.innerHTML = '<div class="muted">Sem pedidos finalizados.</div>';
+        } else {
+          entries.innerHTML = pedidos.map(p=>{
+            const rows = p.itens.map(i=>`<tr><td>${i.nome}</td><td class="right-align">${i.qty}</td><td class="right-align">${money(i.unit)}</td><td class="right-align">${money(i.total)}</td></tr>`).join('');
+            return `
+              <div class="card" style="background:var(--card-2)">
+                <div class="row" style="align-items:center">
+                  <strong>Pedido #${p.id}</strong>
+                  <span class="pill ok">Total: ${money(p.total)}</span>
+                </div>
+                <table class="table" style="margin-top:6px">
+                  <thead><tr><th>Produto</th><th class="right-align">Qtd</th><th class="right-align">Unitário</th><th class="right-align">Subtotal</th></tr></thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
+            `;
+          }).join('');
+        }
+        cont.appendChild(box);
+      });
+    }
+
+    function toggleClienteHist(btn){
+      const container = btn.closest('.card');
+      const entries = $('.hist-entries', container);
+      entries.style.display = entries.style.display==='none' ? '' : 'none';
+    }
+
+    function gotoHistoricoCliente(id){
+      showSection('historico');
+      // Poderíamos focar visualmente neste cliente
+    }
+
+    // === Busca ===
+    function searchAll(term){
+      term = term.trim().toLowerCase();
+      if(!term) return [];
+      const res = [];
+      // Países
+      state.paises.forEach(p=>{ if(p.nome.toLowerCase().includes(term)) res.push({type:'País', label:p.nome, action:()=>showSection('paises')}); });
+      // Clientes
+      state.clientes.forEach(c=>{ if(c.nome.toLowerCase().includes(term)) res.push({type:'Cliente', label:c.nome, action:()=>showSection('clientes')}); });
+      // Pedidos (pendentes e pagos) por número exato ou parcial
+      const num = term.replace(/[^0-9]/g,'');
+      state.pedidos.forEach(p=>{
+        const matchNum = num && String(p.id).includes(num);
+        const matchPaid = p.status==='paid' && (matchNum || term.includes('final') || term.includes('pago'));
+        const matchPending = p.status==='pending' && (matchNum || term.includes('pend')); 
+        if(matchNum || matchPaid || matchPending){
+          res.push({type: p.status==='paid'?'Pedido (finalizado)':'Pedido (pendente)', label:'#'+p.id, action:()=> showSection(p.status==='paid'?'historico':'pendentes')});
+        }
+      });
+      return res;
+    }
+
+    function renderBusca(term){
+      const results = searchAll(term);
+      const list = $('#buscaResultados');
+      if(results.length===0){ list.innerHTML = '<div class="muted">Nada encontrado.</div>'; }
+      else {
+        list.innerHTML = results.map(r=>`
+          <div class="card">
+            <div class="row" style="align-items:center">
+              <span class="tag">${r.type}</span>
+              <strong style="margin-left:8px">${r.label}</strong>
+              <button class="btn btn-mini btn-ghost right" onclick="(${r.action.toString()})(); toggleBuscaModal(false);">Ir</button>
+            </div>
+          </div>
+        `).join('');
+      }
+      toggleBuscaModal(true);
+    }
+
+    function toggleBuscaModal(show){ $('#modalBusca').classList.toggle('open', !!show); }
+
+    // === Exportar/Importar ===
+    function exportar(){
+      const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'erp-3t-promo-backup.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
+
+    function importar(){
+      const f = $('#importFile').files[0];
+      if(!f) return alert('Selecione um arquivo JSON.');
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{ const data = JSON.parse(reader.result);
+          if(!data || typeof data !== 'object') throw new Error('inválido');
+          localStorage.setItem('erp3t', JSON.stringify(data));
+          renderAll();
+          alert('Importação concluída!');
+        }catch(e){ alert('Arquivo inválido.'); }
+      };
+      reader.readAsText(f);
+    }
+
+    // === Eventos ===
+    window.addEventListener('DOMContentLoaded', ()=>{
+      applyTheme();
+      renderAll();
+
+      // Navegação
+      $$('nav a').forEach(a=> a.addEventListener('click', ()=>{
+        const key = a.getAttribute('data-section');
+        if(key==='auth' && !(state.admin && state.admin.logged)) showSection('auth');
+        else if(key!=='auth') showSection(key);
+      }));
+
+      // Auth
+      $('#registerBtn').addEventListener('click', register);
+      $('#loginBtn').addEventListener('click', login);
+      $('#logoutBtn').addEventListener('click', logout);
+
+      // Países
+      $('#addPaisBtn').addEventListener('click', addPais);
+
+      // Produtos (modal)
+      $('#addProdutoBtn').addEventListener('click', addProduto);
+
+      // Clientes
+      $('#addClienteBtn').addEventListener('click', addCliente);
+
+      // Pedidos
+      $('#pedidoPais').addEventListener('change', renderProdutosPedido);
+      $('#pedidoCliente').addEventListener('change', ()=>{});
+      $('#finalizarPedidoBtn').addEventListener('click', finalizarPedido);
+      $('#limparCarrinhoBtn').addEventListener('click', ()=>{ resetCart(); renderProdutosPedido(); });
+
+      // Busca
+      $('#searchBtn').addEventListener('click', ()=> renderBusca($('#searchInput').value));
+      $('#searchInput').addEventListener('keydown', e=>{ if(e.key==='Enter') renderBusca(e.target.value); });
+
+      // Tema
+      $('#themeBtn').addEventListener('click', toggleTheme);
+      $('#themeBtn2').addEventListener('click', toggleTheme);
+
+      // Backup
+      $('#exportBtn').addEventListener('click', exportar);
+      $('#importBtn').addEventListener('click', importar);
+
+      // Atalhos
+      window.addEventListener('keydown', e=>{
+        if(e.key==='/' && document.activeElement!==$('#searchInput')){ e.preventDefault(); $('#searchInput').focus(); }
+        if(e.key==='g'){ showSection('paises'); }
+        if(e.key==='c'){ showSection('clientes'); }
+        if(e.key==='p'){ showSection('pedidos'); }
+      });
+    });
+
+    function updateThemeLabel(){ $('#themeLabel').textContent = (state.theme==='light')?'claro':'escuro'; }
+
+  </script>
+</body>
+</html>
