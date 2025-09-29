@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>3T Promo • ERP Marketplace</title>
+  <style>
+    body{font-family:sans-serif;margin:0;background:#111;color:#eee}
+    header{
+      background:#222;
+      padding:16px 20px;
+      color:#fff;
+      box-shadow:0 2px 6px rgba(0,0,0,0.5);
+      text-align:center;
+    }
+    .logo-bar{display:flex;align-items:center;justify-content:center;gap:12px;position:relative}
+    .logo{height:100px}
+    header h2{margin:0;font-size:2rem;color:yellow}
+    #userbox{position:absolute;right:20px;top:18px;display:flex;align-items:center;gap:10px}
+    nav{
+      background:#b22222;
+      padding:12px 16px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    nav button{
+      background:#111;
+      color:#fff;
+      border:none;
+      padding:10px 16px;
+      cursor:pointer;
+      border-radius:8px;
+      font-weight:bold;
+      transition:0.15s;
+    }
+    nav button:hover{background:#333}
+    main{padding:20px;min-height:60vh}
+    .card{background:#222;padding:16px;border-radius:10px;margin:12px 0}
+    .btn{padding:8px 14px;margin:4px;cursor:pointer;border-radius:6px;border:none}
+    .btn.primary{background:#c33;color:#fff}
+    .btn.ghost{background:transparent;color:#fff;border:1px solid #888}
+    input,select{padding:8px;border-radius:6px;border:1px solid #555;margin:6px 0;width:100%;background:#111;color:#eee}
+    table{width:100%;border-collapse:collapse;margin:12px 0}
+    td,th{border:1px solid #555;padding:8px}
+    th{background:#333}
+    .flex{display:flex;gap:12px;flex-wrap:wrap}
+    .center{max-width:800px;margin:0 auto}
+    /* Busca / destaque */
+    .search-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;max-width:900px}
+    .search-row input{flex:1;padding:8px;border-radius:6px;border:1px solid #555;background:#111;color:#eee}
+    .highlight{background: #ffea8a; color:#000; padding:2px 4px; border-radius:4px;}
+    /* Responsividade simples */
+    @media (max-width:800px){ .center{padding:0 10px} table{font-size:14px} }
+    .badge{background:#ffcc00;color:#000;padding:2px 6px;border-radius:12px;font-weight:bold;margin-left:6px}
+
+header #logo {
+  height: 60px; /* aumenta um pouco o tamanho do logo */
+  margin-right: 20px; /* espaço entre logo e próximo conteúdo, caso exista */
+}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo-bar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img class="logo" src="3T Promo.png" alt="3T Promo"/>
+      <h2>3T Promo • ERP Marketplace</h2>
+    </div>
+    <div id="userbox">
+      <span id="user-info">👤 Não autenticado</span>
+      <button id="logoutBtn" class="btn ghost" style="display:none">Sair</button>
+    </div>
+  </div>
+</header>
+
+
+
+<nav id="menu" style="display:none">
+  <button id="btnPaises" onclick="viewPaises()">Países</button>
+  <button id="btnClientes" onclick="viewClientes()">Clientes</button>
+  <button id="btnProdutos" onclick="viewProdutos()">Produtos</button>
+  <button id="btnPedidos" onclick="viewPedidos()">Pedidos</button>
+  <button id="btnPendentes" onclick="viewPendentes()">Pendentes</button>
+  <button id="btnHistorico" onclick="viewHistorico()">Histórico</button>
+  <button id="btnConfig" onclick="viewConfig()">Config</button>
+</nav>
+
+<main id="content"></main>
+
+<footer style="text-align:center;padding:10px;background:#222;color:#aaa">© 2025 • 3T Promo</footer>
+
+<!-- SheetJS para importar XLSX -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<script>
+
+/* ================== MASTER CONFIG ================== */
+const MASTER_NAME = "Gabriel Rodriguez Toschi";
+const MASTER_PASS = "336699115577";
+
+/* ================== STATE ================== */
+const DB_KEY="erp3t_full";
+const defaultState = {
+  admins:[{nome:MASTER_NAME,senha:MASTER_PASS,ativo:true}],
+  loggedUser:null,
+  paises:[],
+  clientes:[],
+  pendentes:[],
+  lastId:1,
+  theme:"dark",
+  historico:[]
+};
+const state = JSON.parse(localStorage.getItem(DB_KEY)) || defaultState;
+
+// garante que o master existe e senha seja a definida
+(function ensureMaster(){
+  if(!state.admins) state.admins = [];
+  const m = state.admins.find(a=>a.nome===MASTER_NAME);
+  if(!m){
+    state.admins.unshift({nome:MASTER_NAME, senha:MASTER_PASS, ativo:true});
+    save();
+  } else {
+    if(m.senha !== MASTER_PASS || m.ativo !== true){
+      m.senha = MASTER_PASS;
+      m.ativo = true;
+      save();
+    }
+  }
+})();
+
+function save(){ localStorage.setItem(DB_KEY, JSON.stringify(state)) }
+function setContent(html){ document.getElementById("content").innerHTML = html }
+function isMaster(){ return state.loggedUser === MASTER_NAME }
+
+/* FORÇAR LOGOUT GLOBAL: limpa usuário logado agora (pedido do cliente) */
+state.loggedUser = null;
+save();
+
+/* atualiza header + controla visibilidade do menu */
+function updateHeader(){
+  if(state.loggedUser){
+    document.getElementById("user-info").textContent="👤 "+state.loggedUser;
+    document.getElementById("logoutBtn").style.display="inline-block";
+    document.getElementById("menu").style.display="flex";
+    if(isMaster()){
+      document.getElementById("btnPaises").style.display="inline-block";
+      document.getElementById("btnClientes").style.display="inline-block";
+      document.getElementById("btnProdutos").style.display="inline-block";
+      document.getElementById("btnPedidos").style.display="inline-block";
+      document.getElementById("btnPendentes").style.display="inline-block";
+      document.getElementById("btnHistorico").style.display="inline-block";
+      document.getElementById("btnConfig").style.display="inline-block";
+      const pendCount = state.admins.filter(a=>!a.ativo && a.nome !== MASTER_NAME).length;
+      const cfgBtn = document.getElementById("btnConfig");
+      cfgBtn.innerHTML = pendCount>0 ? `Config <span class="badge">${pendCount}</span>` : "Config";
+    } else {
+      document.getElementById("btnPaises").style.display="none";
+      document.getElementById("btnClientes").style.display="none";
+      document.getElementById("btnProdutos").style.display="inline-block";
+      document.getElementById("btnPedidos").style.display="none";
+      document.getElementById("btnPendentes").style.display="none";
+      document.getElementById("btnHistorico").style.display="none";
+      document.getElementById("btnConfig").style.display="none";
+    }
+  } else {
+    document.getElementById("user-info").textContent="👤 Não autenticado";
+    document.getElementById("logoutBtn").style.display="none";
+    document.getElementById("menu").style.display="none";
+  }
+}
+document.getElementById("logoutBtn").onclick = () => { state.loggedUser = null; save(); updateHeader(); viewLogin(); }
+
+/* controle da view atual */
+let currentView = "";
+
+/* barra de busca */
+function renderSearchBar() {
+  return `
+    <div class="search-row center">
+      <input id="searchInput" placeholder="Pesquisar por nome ou número (ex.: 2 ou 2.3). Pressione Enter ou digite..." 
+        onkeydown="if(event.key==='Enter') searchInOrder(document.getElementById('searchInput').value)"
+        oninput="if(this.value==='') { restoreCurrentView(); }">
+      <button class="btn" onclick="searchInOrder(document.getElementById('searchInput').value)">🔍</button>
+      <button class="btn ghost" onclick="document.getElementById('searchInput').value=''; restoreCurrentView()">✖ Limpar</button>
+    </div>
+  `;
+}
+function restoreCurrentView(){
+  if(currentView==="paises") viewPaises();
+  else if(currentView==="clientes") viewClientes();
+  else if(currentView==="produtos") viewProdutos();
+  else if(currentView==="pedidos") viewPedidos();
+  else if(currentView==="pendentes") viewPendentes();
+  else if(currentView==="historico") viewHistorico();
+  else if(currentView==="config") viewConfig();
+  else viewPaises();
+}
+
+/* guard: apenas master */
+function requireMasterRedirect(){
+  if(!isMaster()){
+    alert("Acesso restrito: apenas o administrador master pode realizar essa ação.");
+    viewProdutos();
+    return false;
+  }
+  return true;
+}
+
+/* ========== BUSCA (inclui 'quem') ========== */
+function searchInOrder(q){
+  q = String(q || "").trim();
+  if(!q) { restoreCurrentView(); return; }
+  const isNumPattern = /^\d+(\.\d+)?$/;
+  if(isNumPattern.test(q)){
+    if(q.includes('.')){
+      const [cStr, pStr] = q.split('.');
+      const cIdx = parseInt(cStr,10)-1;
+      const pNum = parseInt(pStr,10);
+      if(cIdx>=0 && state.paises[cIdx]){
+        const produtos = state.paises[cIdx].produtos || [];
+        const pIdx = Math.max(0, pNum - 1);
+        const prod = produtos[pIdx];
+        if(prod){
+          let html = `<h2>Produto ${q} (país ${state.paises[cIdx].nome})</h2>`;
+          html += `<div class="card center" style="max-width:900px">
+                    <table style="width:100%"><tr><th>#</th><th>Nome</th><th>Preço</th><th>Desc</th><th>Cliente</th><th>Quem Trouxe</th></tr>
+                    <tr>
+                      <td>${q}</td>
+                      <td>${prod.nome}</td>
+                      <td>${Number(prod.preco).toFixed(2)}</td>
+                      <td>${prod.desc||0}%</td>
+                      <td>${prod.cliente||""}</td>
+                      <td>${prod.quem||''}</td>
+                    </tr>
+                    </table>
+                  </div>`;
+          setContent(renderSearchBar() + html);
+          return;
+        }
+      }
+      setContent(renderSearchBar() + `<h2>Resultados da busca: "${q}"</h2><p>Nenhum produto encontrado com esse índice.</p>`);
+      return;
+    } else {
+      const cIdx = parseInt(q,10)-1;
+      if(cIdx>=0 && state.paises[cIdx]){
+        const pais = state.paises[cIdx];
+        const produtos = pais.produtos || [];
+        let html = `<h2>Produtos do País ${q} - ${pais.nome}</h2>`;
+        if(produtos.length===0) html += "<p>Nenhum produto neste país.</p>";
+        else {
+          html += `<table class='center' style='max-width:900px'><tr><th>#</th><th>Produto</th><th>Preço</th><th>Desc</th><th>Cliente</th><th>Quem Trouxe</th><th>Ações</th></tr>`;
+          produtos.forEach((pr, pi)=>{
+            const num = (pi===0) ? String(cIdx+1) : `${cIdx+1}.${pi+1}`;
+            html += `<tr>
+              <td>${num}</td>
+              <td>${pr.nome}</td>
+              <td>${Number(pr.preco).toFixed(2)}</td>
+              <td>${(pr.desc ?? 0).toFixed(2)}%</td>
+              <td>${pr.cliente||''}</td>
+              <td>${pr.quem||''}</td>
+              <td>`;
+            if(isMaster()){
+              html += `<button onclick="editarProduto(${cIdx},${pi})" class="btn">✏️</button>
+                       <button onclick="delProduto(${cIdx},${pi})" class="btn ghost">❌</button>`;
+            }
+            html += `</td></tr>`;
+          });
+          html += `</table>`;
+        }
+        setContent(renderSearchBar() + html);
+        return;
+      } else {
+        setContent(renderSearchBar() + `<h2>Resultados da busca: "${q}"</h2><p>País não encontrado.</p>`);
+        return;
+      }
+    }
+  }
+
+  const term = q.toLowerCase();
+  // países
+  const paisMatches = state.paises.map((p,i)=>({p,i})).filter(x=>x.p.nome.toLowerCase().includes(term));
+  if(paisMatches.length>0){
+    let html = `<h2>Países encontrados para "${q}"</h2>`;
+    html += `<table class='center' style='max-width:900px'><tr><th>#</th><th>País</th><th>Ações</th></tr>`;
+    paisMatches.forEach(({p,i})=>{
+      html += `<tr><td>${i+1}</td><td>${p.nome}</td><td>`;
+      if(isMaster()){
+        html += `<button onclick="editarPais(${i})" class="btn">✏️</button>
+        <button onclick="delPais(${i})" class="btn ghost">❌</button>
+        <button onclick="viewProdutosPais(${i})" class="btn">📦 Produtos</button>`;
+      } else {
+        html += `<button onclick="viewProdutosPais(${i})" class="btn">📦 Produtos</button>`;
+      }
+      html += `</td></tr>`;
+    });
+    html += `</table>`;
+    setContent(renderSearchBar() + html);
+    return;
+  }
+
+  // clientes
+  const cliMatches = state.clientes.map((c,i)=>({c,i})).filter(x=>x.c.nome.toLowerCase().includes(term));
+  if(cliMatches.length>0){
+    let html = `<h2>Clientes encontrados para "${q}"</h2>`;
+    html += `<table class='center' style='max-width:900px'><tr><th>#</th><th>Nome</th><th>País</th><th>Tipo</th><th>Quem Trouxe</th><th>Ações</th></tr>`;
+    cliMatches.forEach(({c,i})=>{
+      html += `<tr><td>${i+1}</td><td>${c.nome}</td><td>${c.pais}</td><td>${c.tipo}</td><td>${c.quem||''}</td><td>`;
+      if(isMaster()){
+        html += `<button onclick="editarCliente(${i})" class="btn">✏️</button>
+        <button onclick="delCliente(${i})" class="btn ghost">❌</button>`;
+      }
+      html += `</td></tr>`;
+    });
+    html += `</table>`;
+    setContent(renderSearchBar() + html);
+    return;
+  }
+
+  // produtos por nome
+  let prodMatches = [];
+  state.paises.forEach((pais,pi)=>{
+    (pais.produtos||[]).forEach((pr, pj)=>{
+      if(pr.nome && pr.nome.toLowerCase().includes(term)){
+        const num = (pj===0) ? String(pi+1) : `${pi+1}.${pj+1}`;
+        prodMatches.push({paisIndex:pi, paisNome:pais.nome, prodIndex:pj, prod:pr, numero:num});
+      }
+    });
+  });
+  if(prodMatches.length>0){
+    let html = `<h2>Produtos encontrados para "${q}"</h2>`;
+    html += `<table class='center' style='max-width:900px'><tr><th>#</th><th>Produto</th><th>Preço</th><th>Desc</th><th>Cliente</th><th>Quem Trouxe</th><th>País</th><th>Ações</th></tr>`;
+    prodMatches.forEach(m=>{
+      html += `<tr>
+        <td>${m.numero}</td>
+        <td>${m.prod.nome}</td>
+        <td>${Number(m.prod.preco).toFixed(2)}</td>
+        <td>${m.prod.desc||0}%</td>
+        <td>${m.prod.cliente||''}</td>
+        <td>${m.prod.quem||''}</td>
+        <td>${m.paisNome}</td>
+        <td>`;
+      if(isMaster()){
+        html += `<button onclick="editarProduto(${m.paisIndex},${m.prodIndex})" class="btn">✏️</button>
+                 <button onclick="delProduto(${m.paisIndex},${m.prodIndex})" class="btn ghost">❌</button>`;
+      }
+      html += `</td></tr>`;
+    });
+    html += `</table>`;
+    setContent(renderSearchBar() + html);
+    return;
+  }
+
+  setContent(renderSearchBar() + `<h2>Resultados da busca: "${q}"</h2><p>Nenhum resultado encontrado.</p>`);
+}
+
+/* ========== LOGIN (todos precisam de senha) ========== */
+function viewLogin(){
+  currentView = "login";
+  let html=`
+    <h2>Login Administrador</h2>
+    <div class="card center" style="max-width:420px">
+      <label>Usuário:<input id="loginUser" placeholder="Usuário"></label>
+      <label>Senha:<input type="password" id="loginPass" placeholder="Somente números"></label>
+      <div class="flex" style="justify-content:space-between">
+        <button id="loginBtn" class="btn primary" style="flex:1;margin-right:8px">Entrar</button>
+        <button id="cadAdmBtn" class="btn ghost" style="flex:1">Cadastrar</button>
+      </div>
+      <p style="font-size:12px;color:#bbb;margin-top:8px">Senha numérica obrigatória. Novos cadastros aguardam aprovação do master.</p>
+    </div>`;
+  setContent(html);
+
+  document.getElementById("loginBtn").onclick = () => {
+    let u = document.getElementById("loginUser").value.trim();
+    let p = document.getElementById("loginPass").value.trim();
+    if(!u||!p){ alert("Preencha usuário e senha"); return; }
+    if(!/^\d+$/.test(p)){ alert("A senha deve conter apenas números!"); return; }
+    const adm = state.admins.find(a=>a.nome===u && a.senha===p);
+    if(!adm){ alert("Credenciais inválidas"); return; }
+    if(adm.nome === MASTER_NAME){
+      // master entra sempre
+      state.loggedUser = adm.nome; save(); updateHeader(); viewPaises(); return;
+    }
+    // não-master: precisa estar ativo
+    if(!adm.ativo){ alert("Usuário registrado, mas aguardando aprovação do administrador master."); return; }
+    // aprovado: entra em modo restrito (somente produtos)
+    state.loggedUser = adm.nome; save(); updateHeader(); viewProdutos();
+  };
+
+  document.getElementById("cadAdmBtn").onclick = () => {
+    let u = document.getElementById("loginUser").value.trim();
+    let p = document.getElementById("loginPass").value.trim();
+    if(!u||!p){ alert("Preencha usuário e senha"); return; }
+    if(!/^\d+$/.test(p)){ alert("A senha deve conter apenas números!"); return; }
+    if(u === MASTER_NAME){ alert("Esse nome é reservado para o administrador master."); return; }
+    if(state.admins.find(a=>a.nome===u)){ alert("Já existe um administrador com esse nome!"); return; }
+    state.admins.push({nome:u, senha:p, ativo:false});
+    save(); alert("Registrado com sucesso. Aguardando aprovação do administrador master.");
+  };
+}
+
+
+/* ========== PAÍSES (master) ========== */
+function viewPaises(){
+  currentView = "paises";
+  if(!requireMasterRedirect()) return;
+  let html = renderSearchBar();
+  html += "<h2>Cadastro de Países</h2>";
+  html+=`<div class="card center" style="max-width:600px">
+    <label>Nome do País: <input id="paisNome"></label>
+    <div class="flex" style="justify-content:flex-end">
+      <button onclick="addPais()" class="btn primary">Adicionar País</button>
+      <button onclick="limparSessao('paises')" class="btn ghost">🗑️ Limpar Tudo</button>
+    </div>
+  </div>`;
+  if(state.paises.length===0){
+    html += "<p>Sem países cadastrados.</p>";
+    setContent(html); return;
+  }
+  html+="<table class='center' style='max-width:900px'><tr><th>#</th><th>País</th><th>Ações</th></tr>";
+  state.paises.forEach((p,i)=>{
+    html+=`<tr><td>${i+1}</td><td>${p.nome}</td>
+    <td>
+      <button onclick="editarPais(${i})" class="btn">✏️</button>
+      <button onclick="delPais(${i})" class="btn ghost">❌</button>
+      <button onclick="viewProdutosPais(${i})" class="btn">📦 Produtos</button>
+    </td></tr>`;
+  });
+  html+="</table>";
+  setContent(html);
+}
+function addPais(){
+  if(!requireMasterRedirect()) return;
+  let nome = document.getElementById("paisNome").value.trim();
+  if(!nome){ alert("Digite um nome"); return; }
+  state.paises.push({nome, produtos:[]});
+  save(); viewPaises();
+}
+function editarPais(i){
+  if(!requireMasterRedirect()) return;
+  let n = prompt("Novo nome do país", state.paises[i].nome);
+  if(n && n.trim()){ state.paises[i].nome = n.trim(); save(); viewPaises(); }
+}
+function delPais(i){
+  if(!requireMasterRedirect()) return;
+  if(confirm("Excluir país? (isso removerá produtos vinculados)")){
+    const nomePais = state.paises[i].nome;
+    state.paises.splice(i,1);
+    state.clientes = state.clientes.filter(c=>c.pais !== nomePais);
+    save(); viewPaises();
+  }
+}
+
+/* ========== CLIENTES (quem trouxe) ========== */
+
+// Lista fixa de países (~200)
+const allCountries = [
+  "Afeganistão","África do Sul","Albânia","Alemanha","Andorra","Angola","Arábia Saudita","Argélia","Argentina","Armênia","Austrália","Áustria","Azerbaijão",
+  "Bahamas","Bangladesh","Barbados","Barein","Bélgica","Belize","Benin","Bolívia","Bósnia e Herzegovina","Botsuana","Brasil","Brunei","Bulgária","Burkina Faso","Burundi",
+  "Cabo Verde","Camarões","Camboja","Canadá","Catar","Chile","China","Chipre","Colômbia","Comores","Congo","Coreia do Norte","Coreia do Sul","Costa do Marfim","Costa Rica","Croácia","Cuba","Dinamarca","Djibuti","Dominica","Egito","El Salvador","Emirados Árabes Unidos","Equador","Eritreia","Eslováquia","Eslovênia","Espanha","Estados Unidos","Estônia","Eswatini","Etiópia","Fiji","Filipinas","Finlândia","França","Gabão","Gâmbia","Gana","Geórgia","Grécia","Granada","Guatemala","Guiana","Guiné","Guiné-Bissau","Guiné Equatorial","Haiti","Holanda","Honduras","Hungria","Iêmen","Ilhas Maldivas","Índia","Indonésia","Irã","Iraque","Irlanda","Islândia","Israel","Itália","Jamaica","Japão","Jordânia","Kosovo","Kuwait","Laos","Lesoto","Letônia","Líbano","Libéria","Líbia","Liechtenstein","Lituânia","Luxemburgo","Macedônia do Norte","Madagascar","Malásia","Malawi","Mali","Malta","Marrocos","Maurício","Mauritânia","México","Moçambique","Moldávia","Mônaco","Mongólia","Montenegro","Namíbia","Nepal","Nicarágua","Níger","Nigéria","Noruega","Nova Zelândia","Omã","Palestina","Panamá","Papua-Nova Guiné","Paquistão","Paraguai","Peru","Polônia","Portugal","Quênia","Quirguistão","Reino Unido","República Centro-Africana","República Democrática do Congo","República Dominicana","República Tcheca","Romênia","Ruanda","Rússia","San Marino","Santa Lúcia","São Cristóvão e Névis","São Tomé e Príncipe","São Vicente e Granadinas","Senegal","Serra Leoa","Sérvia","Síria","Singapura","Somália","Sri Lanka","Sudão","Sudão do Sul","Suécia","Suíça","Suriname","Tailândia","Tanzânia","Tchéquia","Timor-Leste","Togo","Trinidad e Tobago","Tunísia","Turcomenistão","Turquia","Ucrânia","Uganda","Uruguai","Uzbequistão","Vaticano","Venezuela","Vietnã","Zâmbia","Zimbábue"
+];
+
+// Sessão Clientes atualizada
+function viewClientes(){
+  currentView = "clientes";
+  if(!requireMasterRedirect()) return;
+  let html = renderSearchBar();
+  html += "<h2>Cadastro de Clientes/Fornecedores</h2>";
+
+  html+=`<div class="card center" style="max-width:700px">
+    <label>Nome: <input id="cliNome"></label>
+    <label>Quem Trouxe:
+      <select id="cliQuemTrouxe">
+        <option value="Meu Logo">Meu Logo</option>
+        <option value="Representante">Representante</option>
+      </select>
+    </label>
+    <label>País:
+      <select id="cliPais">
+        <option value="">Selecione um país</option>
+        ${allCountries.map(p => `<option value="${p}">${p}</option>`).join("")}
+      </select>
+    </label>
+    <label>Tipo:
+      <select id="cliTipo">
+        <option>Cliente</option>
+        <option>Fornecedor</option>
+      </select>
+    </label>
+    <div style="margin-top:10px">
+      <button class="btn red" onclick="addCliente()">Adicionar</button>
+      <button class="btn" onclick="if(confirm('Limpar todos os clientes?')){ state.clientes=[]; save(); viewClientes(); }">Limpar Tudo</button>
+    </div>
+  </div>`;
+
+  if(state.clientes.length){
+    html+="<table class='center' style='max-width:900px'><tr><th>#</th><th>Nome</th><th>País</th><th>Tipo</th><th>Quem Trouxe</th><th>Ações</th></tr>";
+    state.clientes.forEach((c,i)=>{
+      html+=`<tr>
+        <td>${i+1}</td>
+        <td>${c.nome}</td>
+        <td>${c.pais}</td>
+        <td>${c.tipo}</td>
+        <td>${c.quem||''}</td>
+        <td>
+          <button class="btn" onclick="editarCliente(${i})">✏️ Editar</button>
+          <button class="btn red" onclick="delCliente(${i})">Excluir</button>
+        </td>
+      </tr>`;
+    });
+    html+="</table>";
+  }
+
+  setContent(html);
+}
+
+// Funções de cadastro/edição/exclusão permanecem iguais
+function addCliente(){
+  let nome=document.getElementById("cliNome").value;
+  let quem=document.getElementById("cliQuemTrouxe").value;
+  let pais=document.getElementById("cliPais").value;
+  let tipo=document.getElementById("cliTipo").value;
+  if(!nome||!pais||!tipo){ alert("Preencha todos os campos!"); return; }
+  state.clientes.push({nome,quem,pais,tipo});
+  save();
+  viewClientes();
+}
+
+function editarCliente(i){
+  let c=state.clientes[i];
+  let html=`<h2>Editar Cliente</h2>
+  <div class="card center" style="max-width:700px">
+    <label>Nome: <input id="cliNome" value="${c.nome}"></label>
+    <label>Quem Trouxe:
+      <select id="cliQuemTrouxe">
+        <option value="Meu Logo" ${c.quem==="Meu Logo"?"selected":""}>Meu Logo</option>
+        <option value="Representante" ${c.quem==="Representante"?"selected":""}>Representante</option>
+      </select>
+    </label>
+    <label>País:
+      <select id="cliPais">
+        <option value="">Selecione um país</option>
+        ${allCountries.map(p => `<option value="${p}" ${p===c.pais?"selected":""}>${p}</option>`).join("")}
+      </select>
+    </label>
+    <label>Tipo:
+      <select id="cliTipo">
+        <option ${c.tipo==="Cliente"?"selected":""}>Cliente</option>
+        <option ${c.tipo==="Fornecedor"?"selected":""}>Fornecedor</option>
+      </select>
+    </label>
+    <div style="margin-top:10px">
+      <button class="btn red" onclick="salvarCliente(${i})">Salvar</button>
+      <button class="btn" onclick="viewClientes()">Cancelar</button>
+    </div>
+  </div>`;
+  setContent(html);
+}
+
+function salvarCliente(i){
+  let nome=document.getElementById("cliNome").value;
+  let quem=document.getElementById("cliQuemTrouxe").value;
+  let pais=document.getElementById("cliPais").value;
+  let tipo=document.getElementById("cliTipo").value;
+  if(!nome||!pais||!tipo){ alert("Preencha todos os campos!"); return; }
+  state.clientes[i]={nome,quem,pais,tipo};
+  save();
+  viewClientes();
+}
+
+function delCliente(i){
+  if(confirm("Excluir este cliente?")){
+    state.clientes.splice(i,1);
+    save();
+    viewClientes();
+  }
+}
+
+/* ========== PRODUTOS (quem trouxe) ========== */
+function viewProdutos(){
+  currentView = "produtos";
+  let html = renderSearchBar();
+  html += "<h2>Cadastro de Produtos</h2>";
+  if(state.paises.length==0){ html+="<p>Cadastre ao menos um país primeiro.</p>"; setContent(html); return; }
+  if(state.clientes.length==0){ html+="<p>Cadastre ao menos um cliente primeiro.</p>"; setContent(html); return; }
+
+  // se não for master -> somente leitura (lista)
+  if(!isMaster()){
+    let readonlyHtml = `<div class="card center" style="max-width:900px"><h3>Lista de Produtos (somente visualização)</h3></div>`;
+    state.paises.forEach((p,i)=>{
+      readonlyHtml+=`<h3 style="margin-top:18px">${i+1} - ${p.nome}</h3>`;
+      readonlyHtml+=`<table class='center' style='max-width:900px'><tr><th>#</th><th>Produto</th><th>Preço</th><th>Desc</th><th>Fornecedor</th><th>Quem Trouxe</th></tr>`;
+      (p.produtos||[]).forEach((pr,pi)=>{
+        const numero = (pi===0) ? `${i+1}` : `${i+1}.${pi+1}`;
+        readonlyHtml+=`<tr>
+          <td>${numero}</td>
+          <td>${pr.nome}</td>
+          <td>${Number(pr.preco).toFixed(2)}</td>
+          <td>${pr.desc.toFixed(2)}%</td>
+         <td>${pr.cliente||''}</td>
+          <td>${pr.quem||''}</td>
+        </tr>`;
+      });
+      readonlyHtml+="</table>";
+    });
+    setContent(renderSearchBar() + readonlyHtml);
+    return;
+  }
+
+  // master -> mostra formulário com "Quem Trouxe"
+  let htmlForm = `<div class="card center" style="max-width:800px">
+    <label>Selecione País:
+      <select id="paisSel" onchange="renderClienteSelInProduto()">
+        ${state.paises.map((p,i)=>`<option value="${i}">${p.nome}</option>`).join("")}
+      </select>
+    </label>
+    <label>Nome Produto: <input id="prodNome"></label>
+    <label>Quem Trouxe:
+      <select id="prodQuem">
+        <option value="Meu Logo">Meu Logo</option>
+        <option value="Representante">Representante</option>
+      </select>
+    </label>
+    <label>Preço: <input id="prodPreco" type="number"></label>
+    <label>Desconto (%): <input id="prodDesc" type="number" step="0.01" min="0" max="100"></label>
+    <label>Cliente:
+      <select id="prodCli">
+        ${state.clientes.filter(c=>c.pais===state.paises[0]?.nome).map(c=>`<option value="${c.nome}">${c.nome}</option>`).join("")}
+      </select>
+    </label>
+    <div style="text-align:right">
+      <button onclick="addProduto()" class="btn primary">Adicionar Produto</button>
+      <button onclick="limparSessao('produtosAll')" class="btn ghost">🗑️ Limpar Tudo (todos países)</button>
+    </div>
+  </div>`;
+
+  html += htmlForm;
+
+  state.paises.forEach((p,i)=>{
+    html+=`<h3 style="margin-top:18px">${i+1} - ${p.nome}</h3>`;
+    html+=`<table class='center' style='max-width:900px'><tr><th>#</th><th>Produto</th><th>Preço</th><th>Desc</th><th>Fornecedor</th><th>Quem Trouxe</th><th>Ações</th></tr>`;
+    (p.produtos||[]).forEach((pr,pi)=>{
+      const numero = (pi===0) ? `${i+1}` : `${i+1}.${pi+1}`;
+      html+=`<tr>
+        <td>${numero}</td>
+        <td>${pr.nome}</td>
+        <td>${Number(pr.preco).toFixed(2)}</td>
+        <td>${(pr.desc ?? 0).toFixed(2)}%</td>
+        <td>${pr.cliente||''}</td>
+        <td>${pr.quem||''}</td>
+        <td>
+          <button onclick="editarProduto(${i},${pi})" class="btn">✏️</button>
+          <button onclick="delProduto(${i},${pi})" class="btn ghost">❌</button>
+        </td>
+      </tr>`;
+    });
+    html+="</table>";
+  });
+
+  setContent(html);
+  renderClienteSelInProduto();
+}
+function renderClienteSelInProduto(){
+  let sel = document.getElementById("paisSel");
+  if(!sel) return;
+  let idx = parseInt(sel.value);
+  let paisNome = state.paises[idx].nome;
+  let selC = document.getElementById("prodCli");
+  if(!selC) return;
+  selC.innerHTML = state.clientes.filter(c=>c.pais===paisNome).map(c=>`<option value="${c.nome}">${c.nome}</option>`).join("");
+  if(selC.options.length===0){
+    selC.innerHTML = state.clientes.map(c=>`<option value="${c.nome}">${c.nome} (outro país)</option>`).join("");
+  }
+}
+function addProduto(){
+  if(!requireMasterRedirect()) return;
+  let i = parseInt(document.getElementById("paisSel").value);
+  let nome = document.getElementById("prodNome").value.trim();
+  let quem = document.getElementById("prodQuem").value;
+  let preco = parseFloat(document.getElementById("prodPreco").value);
+  let rawDesc = document.getElementById("prodDesc").value;
+let desc = normalizePercent(rawDesc);
+desc = parseFloat(desc.toFixed(2));
+preco = parseFloat(preco.toFixed(2));
+
+  let cliente = document.getElementById("prodCli").value;
+  if(!nome || isNaN(preco)){ alert("Preencha nome e preço"); return; }
+  state.paises[i].produtos = state.paises[i].produtos || [];
+  state.paises[i].produtos.push({nome,preco,desc,cliente,quem});
+  save(); viewProdutos();
+}
+function editarProduto(paisIndex, prodIndex){
+  if(!requireMasterRedirect()) return;
+  let pr = state.paises[paisIndex].produtos[prodIndex];
+
+  // preço
+  let novoPreco = prompt("Preço do produto", pr.preco ?? 0);
+  if(novoPreco!==null){
+    novoPreco = parseFloat(novoPreco.replace(",", "."));
+    if(isNaN(novoPreco)){ alert("Preço inválido"); return; }
+    pr.preco = novoPreco;
+  }
+
+  // desconto
+let descontoAtual = (pr.desc !== undefined && pr.desc !== null) ? pr.desc : 0;
+let novoDesc = prompt("Desconto (%)", descontoAtual);
+if(novoDesc !== null){
+  pr.desc = normalizePercent(novoDesc);
+}
+
+
+
+  // cliente
+  let pais = state.paises[paisIndex].nome;
+  let clientesFornecedoresDoPais = state.clientes.filter(c => c.pais === pais).map(c => c.nome);
+  if(clientesFornecedoresDoPais.length>0){
+    let novoCli = prompt(
+      "Cliente ou Fornecedor vinculado ("+clientesFornecedoresDoPais.join(", ")+")", 
+      pr.cliente||clientesFornecedoresDoPais[0]
+    );
+    if(novoCli && clientesFornecedoresDoPais.includes(novoCli)) pr.cliente = novoCli;
+  }
+
+  // quem trouxe
+  let novoQuem = prompt("Quem trouxe (Meu Logo / Representante)", pr.quem||"Meu Logo");
+  if(novoQuem!==null) pr.quem = novoQuem;
+
+  save(); 
+  viewProdutos();
+}
+
+function delProduto(i,pi){ if(!requireMasterRedirect()) return; if(confirm("Excluir produto?")){ state.paises[i].produtos.splice(pi,1); save(); viewProdutos(); } }
+function viewProdutosPais(i){ viewProdutos(); setTimeout(()=>{ let sel=document.getElementById("paisSel"); if(sel) sel.value = i; renderClienteSelInProduto(); },50); }
+
+/* ========== PEDIDOS (master) ========== */
+function viewPedidos(){
+  currentView = "pedidos";
+  if(!requireMasterRedirect()) return;
+  if(state.clientes.length==0 || state.paises.length==0){ setContent(renderSearchBar() + "<p>Cadastre clientes e países/produtos antes.</p>"); return; }
+  let html=renderSearchBar()+"<h2>Novo Pedido</h2>";
+  html+=`<div class="card center" style="max-width:900px">
+    <label>Cliente:
+      <select id="pedCli">${state.clientes.map((c,i)=>`<option value="${i}">${c.nome} (${c.pais})</option>`).join("")}</select>
+    </label>
+    <label>País:
+      <select id="pedPais" onchange="renderProdSel()">${state.paises.map((p,i)=>`<option value="${i}">${p.nome}</option>`).join("")}</select>
+    </label>
+    <div id="prodSel"></div>
+    <button onclick="finalizarPedido()" class="btn primary">Finalizar Pedido</button>
+  </div>
+  <div id="carrinho" class="center" style="max-width:900px"></div>`;
+  setContent(html);
+  renderProdSel();
+}
+let carrinho=[];
+function renderProdSel(){
+  let pi = parseInt(document.getElementById("pedPais").value);
+  let p = state.paises[pi];
+  let html = "<h4>Produtos</h4>";
+  if(!p.produtos || p.produtos.length===0) html += "<p>Nenhum produto neste país.</p>";
+  else p.produtos.forEach((pr,pri)=>{
+    html+=`<div style="margin-bottom:8px">
+      <b>${pr.nome}</b> - ${Number(pr.preco).toFixed(2)} (-${(pr.desc ?? 0).toFixed(2)}%)
+      <input type="number" id="qtd${pri}" placeholder="Qtd" min="1" style="width:70px;margin-left:10px">
+      <button onclick="addCarrinho(${pi},${pri})" class="btn ghost">Add</button>
+    </div>`;
+  });
+  document.getElementById("prodSel").innerHTML = html;
+  renderCarrinho();
+}
+function addCarrinho(pi,pri){
+  let qtd = parseInt(document.getElementById("qtd"+pri).value);
+  if(!qtd || qtd<=0){ alert("Quantidade inválida"); return; }
+  let pr = state.paises[pi].produtos[pri];
+  let precoUnit = pr.preco * (1 - (pr.desc||0)/100);
+  carrinho.push({pais:pi,produtoIndex:pri,nome:pr.nome,qtd,preco:precoUnit});
+  renderCarrinho();
+}
+function renderCarrinho(){
+  if(!document.getElementById("carrinho")) return;
+  let html = "<h3>Carrinho</h3><table><tr><th>Produto</th><th>Qtd</th><th>Subtotal</th><th>Ações</th></tr>";
+  let tot=0;
+  carrinho.forEach((it,idx)=>{
+    let st = it.qtd * it.preco; tot += st;
+    html += `<tr><td>${it.nome}</td><td>${it.qtd}</td><td>${st.toFixed(2)}</td>
+      <td><button onclick="removerDoCarrinho(${idx})" class="btn ghost">Remover</button></td></tr>`;
+  });
+  html += `<tr><td colspan=2>Total</td><td>${tot.toFixed(2)}</td><td></td></tr></table>`;
+  document.getElementById("carrinho").innerHTML = html;
+}
+function removerDoCarrinho(idx){ carrinho.splice(idx,1); renderCarrinho(); }
+function finalizarPedido(){
+  if(carrinho.length===0){ alert("Carrinho vazio"); return; }
+  let ci = parseInt(document.getElementById("pedCli").value);
+  let pedido = { id: state.lastId++, itens: [...carrinho], status:"Pendente" };
+  state.pendentes.push({cli:ci,pedido});
+  state.historico.push(`Pedido ${pedido.id} criado (cliente ${state.clientes[ci].nome})`);
+  carrinho = [];
+  save(); viewPendentes();
+}
+
+/* ========== PENDENTES (master) ========== */
+function viewPendentes(){
+  currentView = "pendentes";
+  if(!requireMasterRedirect()) return;
+  let html=renderSearchBar()+"<h2>Pedidos Pendentes</h2>";
+  html+=`<div style="text-align:right" class="center" style="max-width:900px"><button onclick="limparSessao('pendentes')" class="btn ghost">🗑️ Limpar Tudo</button></div>`;
+  if(state.pendentes.length===0){ html += "<p>Nenhum pedido pendente.</p>"; setContent(html); return; }
+  state.pendentes.forEach((p,i)=>{
+    let cli = state.clientes[p.cli];
+    html+=`<div class="card" style="max-width:900px;margin:12px auto"><h3>Pedido ${p.pedido.id} - Cliente ${cli?cli.nome:'(cliente removido)'}</h3>`;
+    html+="<table><tr><th>Produto</th><th>Qtd</th><th>Subtotal</th></tr>";
+    let tot=0;
+    p.pedido.itens.forEach(it=>{
+      let st = it.qtd * it.preco; tot+=st;
+      html+=`<tr><td>${it.nome}</td><td>${it.qtd}</td><td>${st.toFixed(2)}</td></tr>`;
+    });
+    html+=`<tr><td colspan=2>Total</td><td>${tot.toFixed(2)}</td></tr></table>
+      <div style="margin-top:8px">
+        <button onclick="concluirPedido(${i})" class="btn primary">Marcar Pago</button>
+        <button onclick="cancelarPedido(${i})" class="btn ghost">Cancelar</button>
+      </div></div>`;
+  });
+  setContent(html);
+}
+function concluirPedido(i){
+  if(!requireMasterRedirect()) return;
+  let {cli,pedido} = state.pendentes[i];
+  if(state.clientes[cli]) state.clientes[cli].pedidos = state.clientes[cli].pedidos || [];
+  if(state.clientes[cli]) state.clientes[cli].pedidos.push(pedido);
+  state.historico.push(`Pedido ${pedido.id} concluído (cliente ${state.clientes[cli]?.nome||'removido'})`);
+  state.pendentes.splice(i,1);
+  save(); viewPendentes();
+}
+function cancelarPedido(i){ if(!requireMasterRedirect()) return; if(confirm("Cancelar pedido?")){ state.historico.push(`Pedido ${state.pendentes[i].pedido.id} cancelado`); state.pendentes.splice(i,1); save(); viewPendentes(); } }
+
+/* ========== HISTÓRICO (master) ========== */
+function viewHistorico(){
+  currentView = "historico";
+  if(!requireMasterRedirect()) return;
+  let html = renderSearchBar() + "<h2>Histórico</h2>";
+  html+=`<div style="text-align:right"><button onclick="limparHistorico()" class="btn ghost">🗑️ Limpar Histórico</button></div>`;
+  if(state.historico.length===0){ html+="<p>Vazio</p>"; setContent(html); return; }
+  html+=`<div style="max-width:900px;margin:12px auto">`;
+  state.historico.forEach((h,i)=>{
+    html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center">
+      <div>${h}</div>
+      <div>
+        <button onclick="editarHistorico(${i})" class="btn">✏️</button>
+        <button onclick="excluirHistorico(${i})" class="btn ghost">❌</button>
+      </div>
+    </div></div>`;
+  });
+  html+="</div>";
+  setContent(html);
+}
+function limparHistorico(){ if(!requireMasterRedirect()) return; if(!confirm("Limpar todo o histórico?")) return; state.historico=[]; save(); viewHistorico(); }
+function editarHistorico(i){ if(!requireMasterRedirect()) return; let novo = prompt("Editar histórico", state.historico[i]); if(novo!=null){ state.historico[i]=novo; save(); viewHistorico(); } }
+function excluirHistorico(i){ if(!requireMasterRedirect()) return; if(confirm("Remover item do histórico?")){ state.historico.splice(i,1); save(); viewHistorico(); } }
+
+/* ========== CONFIG (master) ========== */
+function viewConfig(){
+  currentView = "config";
+  if(!requireMasterRedirect()) return;
+  let html = renderSearchBar() + "<h2>Configurações</h2>";
+  html+=`<div class="card center" style="max-width:900px">
+    <div style="display:flex;gap:8px">
+      <button onclick="exportar()" class="btn primary">Exportar Dados</button>
+      <input type="file" id="importFile">
+      <button onclick="importar()" class="btn ghost">Importar</button>
+    </div>
+    <div style="margin-top:10px">
+      <button onclick="limparSessao('admins')" class="btn ghost">🗑️ Limpar Admins</button>
+    </div>
+  </div>`;
+
+  // lista admins
+  html += `<h3>Administradores</h3>`;
+  html+="<table class='center' style='max-width:600px'><tr><th>Nome</th><th>Senha</th><th>Ativo</th><th>Ações</th></tr>";
+  state.admins.forEach((a,i)=>{
+    const disabledMaster = (a.nome === MASTER_NAME);
+    html+=`<tr>
+      <td><input value="${a.nome}" id="admNome${i}" ${disabledMaster ? 'readonly' : ''}></td>
+      <td><input value="${a.senha}" id="admSenha${i}" type="password"></td>
+      <td>${a.ativo? '✅' : '⏳ (aguardando)'}</td>
+      <td>`;
+    if(isMaster()){
+      html += `<button onclick="updateAdmin(${i})" class="btn primary"${disabledMaster?' disabled':''}>Salvar</button>
+               <button onclick="deleteAdmin(${i})" class="btn ghost"${disabledMaster?' disabled':''}>Excluir</button>`;
+    } else {
+      html += `—`;
+    }
+    html += `</td></tr>`;
+  });
+  html+="</table>";
+
+  // pendentes
+  const pendentes = state.admins.filter(a=>!a.ativo && a.nome !== MASTER_NAME);
+  html += `<h3>Usuários Aguardando Aprovação</h3>`;
+  if(pendentes.length===0){
+    html += `<p>Nenhum usuário pendente.</p>`;
+  } else {
+    html += `<table class='center' style='max-width:600px'><tr><th>Nome</th><th>Ações</th></tr>`;
+    pendentes.forEach(p=>{
+      const idx = state.admins.findIndex(a=>a.nome===p.nome && a.senha===p.senha);
+      html += `<tr><td>${p.nome}</td><td>
+        <button onclick="aprovarUser(${idx})" class="btn primary">Aprovar</button>
+        <button onclick="rejeitarUser(${idx})" class="btn ghost">Rejeitar</button>
+      </td></tr>`;
+    });
+    html += `</table>`;
+  }
+
+  setContent(html);
+}
+function exportar(){
+  if(!requireMasterRedirect()) return;
+  let blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  let a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="backup.json"; a.click();
+}
+
+/* ---------- HELPERS PARA IMPORTAR ---------- */
+
+function findKey(row, variants){
+  // retorna a chave real do objeto row que bate com alguma variante (case-insens.)
+  if(!row) return null;
+  const keys = Object.keys(row);
+  const lowMap = keys.reduce((m,k)=>{ m[k.toLowerCase().trim()] = k; return m; }, {});
+  // busca exata por variante
+  for(const v of variants){
+    const k = lowMap[v.toLowerCase().trim()];
+    if(k) return k;
+  }
+  // busca por "contains"
+  for(const k of keys){
+    const kl = k.toLowerCase().trim();
+    for(const v of variants){
+      if(kl.includes(v.toLowerCase().trim())) return k;
+    }
+  }
+  return null;
+}
+
+function normalizePercent(value){
+  // aceita number (0.033) ou string ("3,30%", "3.3", "0,033")
+  if(value === undefined || value === null || value === "") return 0;
+  if(typeof value === "number"){
+    if(value > 0 && value < 1) return parseFloat((value * 100).toFixed(2));
+    return parseFloat(value.toFixed(2));
+  }
+  let s = String(value).replace("%","").replace(/\s+/g,"").replace(",",".").trim();
+  if(s === "") return 0;
+  let n = parseFloat(s);
+  if(isNaN(n)) return 0;
+  if(n > 0 && n < 1) return parseFloat((n * 100).toFixed(2));
+  return parseFloat(n.toFixed(2));
+}
+
+function normalizePreco(value){
+  // aceita number ou string; vazio => 0; retorna com 2 casas
+  if(value === undefined || value === null || value === "") return 0;
+  if(typeof value === "number"){
+    const num = parseFloat(value);
+    if(isNaN(num)) return 0;
+    return parseFloat(num.toFixed(2));
+  }
+  let s = String(value).replace(/\s+/g,"").replace(",",".").trim();
+  if(s === "") return 0;
+  let n = parseFloat(s);
+  if(isNaN(n)) return 0;
+  // se for muito pequeno (ex.: resultado de formato %) e você quer tratar como zero, opcional:
+  if(Math.abs(n) < 0.0001) return 0;
+  return parseFloat(n.toFixed(2));
+}
+
+/* ---------- FUNÇÃO IMPORTAR (SUBSTITUIR A ANTIGA) ---------- */
+
+function importar(){
+  if(!requireMasterRedirect()) return;
+  let f = document.getElementById("importFile").files[0];
+  if(!f){ alert("Selecione um arquivo"); return; }
+  let ext = f.name.split('.').pop().toLowerCase();
+  let reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      let imported;
+      if(ext==="json"){ imported = JSON.parse(e.target.result); }
+      else if(ext==="xlsx"){
+        let data = new Uint8Array(e.target.result);
+        let workbook = XLSX.read(data, {type:'array'});
+        let sheetName = workbook.SheetNames[0];
+        let sheet = workbook.Sheets[sheetName];
+        imported = XLSX.utils.sheet_to_json(sheet, {defval:""});
+      } else { alert("Formato não suportado. Use JSON ou XLSX."); return; }
+
+      if(!Array.isArray(imported)){
+        Object.assign(state, imported);
+        save(); alert("Importado com sucesso!"); viewConfig(); return;
+      }
+
+      let destino = prompt("Importar para onde? (admins, paises, clientes, pendentes, produtos)");
+      if(!destino) return;
+      destino = destino.trim();
+
+      if(destino === "produtos"){
+        if(!state.paises || state.paises.length===0){ alert("Cadastre países antes de importar produtos."); return; }
+        let paisNome = prompt("Digite o nome do país que receberá os produtos:");
+        if(!paisNome) return;
+        let pais = state.paises.find(p=>p.nome.toLowerCase()===paisNome.toLowerCase());
+        if(!pais){ alert("País não encontrado"); return; }
+
+        const produtos = imported.map(row => {
+  const keys = Object.keys(row || {});
+  const rawNome = row[keys[0]] || "";
+
+  let rawPreco = "";
+  let rawDesc = "";
+
+  if (keys.length === 2) {
+    // Produto + Desconto -> preço deve ser 0
+    rawPreco = "";            
+    rawDesc  = row[keys[1]];
+  } else if (keys.length >= 3) {
+    // Produto + Preço + Desconto
+    rawPreco = row[keys[1]];
+    rawDesc  = row[keys[2]];
+  }
+
+  const preco = rawPreco ? normalizePreco(rawPreco) : 0;
+  const desc  = rawDesc ? normalizePercent(rawDesc) : 0;
+
+  return {
+    nome: String(rawNome).trim(),
+    preco,
+    desc,
+    cliente: "",
+    quem: ""
+  };
+}).filter(p => p.nome);
+
+
+        pais.produtos = (pais.produtos||[]).concat(produtos);
+        save();
+        alert(`Importado ${produtos.length} produtos para ${pais.nome}.`);
+        viewConfig();
+        return;
+      }
+
+      // resto dos destinos (mantém seu comportamento original)
+      if(state[destino] !== undefined){
+        if(destino==="admins"){
+          let admins = imported.map(r=>({nome: r.nome||r.Nome||"", senha: String(r.senha||r.Senha||""), ativo: !!r.ativo})).filter(a=>a.nome);
+          if(!admins.find(a=>a.nome===MASTER_NAME)){
+            admins.unshift({nome:MASTER_NAME, senha:MASTER_PASS, ativo:true});
+          }
+          state.admins = admins;
+        } else if(destino==="paises"){
+          let paises = imported.map(r=>({nome: r.nome||r.Nome||r.name||""})).filter(p=>p.nome);
+          state.paises = paises.map(p=>({nome:p.nome, produtos:[]}));
+        } else if(destino==="clientes"){
+          let clientes = imported.map(r=>({nome: r.nome||r.Nome||"", pais: r.pais||r.Pais||r.country||"", quem: r.quem || r.Quem || r["Quem trouxe"] || ""})).filter(c=>c.nome);
+          state.clientes = clientes;
+        } else {
+          state[destino] = imported;
+        }
+        save();
+        alert("Importado com sucesso!");
+        viewConfig();
+        return;
+      }
+
+      alert("Destino inválido.");
+    } catch(err){
+      console.error(err);
+      alert("Erro ao importar: "+err.message);
+    }
+  };
+  if(ext==="json") reader.readAsText(f);
+  else if(ext==="xlsx") reader.readAsArrayBuffer(f);
+}
+
+
+/* importar JSON/XLSX (preserva campo 'quem' quando aplicável) */
+
+
+/* ========== ADMIN CRUD helpers ========== */
+function updateAdmin(i){
+  if(!requireMasterRedirect()) return;
+  let nome = document.getElementById("admNome"+i).value.trim();
+  let senha = document.getElementById("admSenha"+i).value.trim();
+  if(!nome||!senha){ alert("Preencha nome e senha"); return; }
+  if(!/^\d+$/.test(senha)){ alert("Senha deve conter apenas números"); return; }
+  if(state.admins.some((a,idx)=>a.nome===nome && idx!==i)){ alert("Já existe outro administrador com esse nome"); return; }
+  if(state.admins[i].nome === MASTER_NAME && nome !== MASTER_NAME){ alert("Não é permitido renomear o administrador master."); return; }
+  state.admins[i].nome = nome; state.admins[i].senha = senha; save(); alert("Administrador atualizado"); viewConfig();
+}
+function deleteAdmin(i){
+  if(!requireMasterRedirect()) return;
+  if(state.admins[i].nome === MASTER_NAME){ alert("Não é permitido excluir o administrador master."); return; }
+  if(confirm("Excluir este administrador?")){ state.admins.splice(i,1); save(); viewConfig(); }
+}
+
+/* aprovar / rejeitar */
+function aprovarUser(idx){
+  if(!requireMasterRedirect()) return;
+  if(state.admins[idx]){ state.admins[idx].ativo = true; save(); alert("Usuário aprovado."); viewConfig(); updateHeader(); }
+}
+function rejeitarUser(idx){
+  if(!requireMasterRedirect()) return;
+  if(state.admins[idx]){ if(confirm("Rejeitar e excluir este usuário?")){ state.admins.splice(idx,1); save(); viewConfig(); updateHeader(); } }
+}
+
+/* ========== LIMPAR SESSÕES ========== */
+function limparSessao(sess){
+  if(!requireMasterRedirect()) return;
+  if(!confirm("Tem certeza que deseja limpar todos os registros de "+sess+"?")) return;
+  if(sess==="produtosAll"){
+    state.paises.forEach(p=>p.produtos=[]);
+  } else if(sess==="paises"){
+    state.paises = [];
+    state.clientes = state.clientes.map(c=>({ ...c, pais: undefined }));
+  } else if(sess==="clientes"){
+    state.clientes = [];
+  } else if(sess==="pendentes"){
+    state.pendentes = [];
+  } else if(sess==="historico"){
+    state.historico = [];
+  } else if(sess==="admins"){
+    state.admins = state.admins.filter(a=>a.nome===MASTER_NAME);
+  } else {
+    if(state[sess] !== undefined && Array.isArray(state[sess])) state[sess] = [];
+  }
+  save();
+  if(sess==="paises") viewPaises();
+  else if(sess==="clientes") viewClientes();
+  else if(sess==="produtosAll") viewProdutos();
+  else if(sess==="pendentes") viewPendentes();
+  else if(sess==="historico") viewHistorico();
+  else if(sess==="admins") viewConfig();
+}
+
+/* ========== INITIALIZE ========== */
+updateHeader();
+viewLogin();
+</script>
+</body>
+</html>
